@@ -1,296 +1,749 @@
-<!DOCTYPE html>
+<index.html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>코코포리아 스탠딩 & 토큰 크롭 도구</title>
-    <!-- Cropper.js CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <title>CCFOLIA Standing Cropper v1.2</title>
     <style>
         :root {
-            --bg-color: #1a1a1a;
-            --card-bg: #2d2d2d;
-            --accent-color: #6366f1;
-            --accent-hover: #4f46e5;
-            --text-color: #f3f4f6;
-            --text-muted: #9ca3af;
+            --bg-color: #121214;
+            --panel-bg: #1e1e24;
+            --border-color: #2b2b36;
+            --primary-color: #ff4757;
+            --primary-hover: #ff6b81;
+            --text-color: #f1f2f6;
+            --text-muted: #a4b0be;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
         }
 
         body {
-            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
-            margin: 0;
-            padding: 20px;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* 2컬럼 레이아웃 */
+        .container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* 좌측 제어 패널 */
+        .sidebar {
+            width: 340px;
+            min-width: 340px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 24px;
             display: flex;
             flex-direction: column;
+            gap: 24px;
+            z-index: 10;
+            box-shadow: 4px 0 12px rgba(0,0,0,0.3);
+        }
+
+        .title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            letter-spacing: 1px;
+            display: flex;
             align-items: center;
-            min-height: 100vh;
+            gap: 8px;
         }
 
-        h1 {
-            margin-bottom: 8px;
-            font-size: 1.8rem;
-        }
-
-        p.subtitle {
-            color: var(--text-muted);
-            margin-top: 0;
-            margin-bottom: 24px;
-            font-size: 0.95rem;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 900px;
-            background-color: var(--card-bg);
-            padding: 24px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
-
+        /* 드롭존 */
         .drop-zone {
-            border: 2px dashed #4b5563;
+            border: 2px dashed var(--border-color);
             border-radius: 8px;
-            padding: 40px;
+            padding: 24px 16px;
             text-align: center;
             cursor: pointer;
-            transition: border-color 0.2s, background-color 0.2s;
-            margin-bottom: 20px;
+            transition: all 0.2s ease;
+            background-color: rgba(255, 255, 255, 0.02);
         }
 
         .drop-zone:hover, .drop-zone.dragover {
-            border-color: var(--accent-color);
-            background-color: rgba(99, 102, 241, 0.05);
+            border-color: var(--primary-color);
+            background-color: rgba(255, 71, 87, 0.05);
         }
 
-        .cropper-wrapper {
-            max-height: 500px;
-            margin-bottom: 20px;
-            display: none;
-            background-color: #000;
-            border-radius: 8px;
-            overflow: hidden;
+        .drop-zone p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+            line-height: 1.4;
         }
 
-        .cropper-wrapper img {
-            max-width: 100%;
-            display: block;
+        .drop-zone .icon {
+            font-size: 1.8rem;
         }
 
-        .controls {
-            display: none;
-            flex-wrap: wrap;
+        /* 컨트롤 요소 */
+        .control-group {
+            display: flex;
+            flex-direction: column;
             gap: 10px;
-            margin-bottom: 20px;
-            justify-content: center;
         }
 
-        .btn {
-            background-color: #374151;
-            color: #fff;
-            border: none;
-            padding: 10px 16px;
+        .control-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .ratio-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .btn-radio {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 10px;
             border-radius: 6px;
             cursor: pointer;
-            font-weight: 500;
-            transition: background-color 0.2s;
+            font-weight: 600;
+            transition: all 0.2s;
+            text-align: center;
         }
 
-        .btn:hover {
-            background-color: #4b5563;
+        .btn-radio.active {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: #fff;
         }
 
-        .btn-primary {
-            background-color: var(--accent-color);
-        }
-
-        .btn-primary:hover {
-            background-color: var(--accent-hover);
-        }
-
-        .btn-accent {
-            background-color: #10b981;
-        }
-
-        .btn-accent:hover {
-            background-color: #059669;
-        }
-
-        .preset-group {
+        .slider-container {
             display: flex;
-            gap: 8px;
             align-items: center;
+            gap: 12px;
         }
 
-        .result-container {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            margin-top: 20px;
-            border-top: 1px solid #4b5563;
-            padding-top: 20px;
+        input[type="range"] {
+            flex: 1;
+            accent-color: var(--primary-color);
+            cursor: pointer;
         }
 
-        .preview-box {
-            max-width: 300px;
-            max-height: 400px;
-            border: 1px solid #4b5563;
-            border-radius: 8px;
+        .slider-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            width: 45px;
+            text-align: right;
+        }
+
+        /* 보조 버튼 스타일 */
+        .btn-secondary {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-action {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: auto;
+        }
+
+        .btn-action:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-action:disabled {
+            background-color: var(--border-color);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        /* 우측 미리보기 영역 */
+        .preview-area {
+            flex: 1;
+            background-color: var(--bg-color);
+            background-image: 
+                linear-gradient(45deg, #18181c 25%, transparent 25%), 
+                linear-gradient(-45deg, #18181c 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #18181c 75%),
+                linear-gradient(-45deg, transparent 75%, #18181c 75%);
+            background-size: 24px 24px;
+            background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
             overflow: hidden;
-            margin-bottom: 15px;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><rect width="8" height="8" fill="%23333"/><rect x="8" width="8" height="8" fill="%23444"/><rect y="8" width="8" height="8" fill="%23444"/><rect x="8" y="8" width="8" height="8" fill="%23333"/></svg>');
+            cursor: grab;
         }
 
-        .preview-box img {
+        .preview-area:active {
+            cursor: grabbing;
+        }
+
+        /* 뷰포트 내부 캔버스 컨테이너 (Pan & Zoom 전용) */
+        .viewport {
+            position: absolute;
+            transform-origin: center center;
+            will-change: transform;
+        }
+
+        .stage {
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: inline-block;
+        }
+
+        #sourceCanvas {
             display: block;
-            max-width: 100%;
+            max-width: calc(100vw - 400px);
+            max-height: 92vh;
+            width: auto;
             height: auto;
+            object-fit: contain;
         }
 
-        input[type="file"] {
-            display: none;
+        /* 크롭 영역 오버레이 */
+        .crop-box {
+            position: absolute;
+            border: 2px solid var(--primary-color);
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+            cursor: ew-resize;
+            box-sizing: border-box;
         }
+
+        .crop-box::after {
+            content: '↔ 좌우 드래그';
+            position: absolute;
+            top: -26px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary-color);
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            pointer-events: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        /* 줌 툴바 오버레이 */
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(30, 30, 36, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 20;
+            font-size: 0.85rem;
+        }
+
+        .btn-reset-zoom {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .btn-reset-zoom:hover {
+            background: var(--border-color);
+        }
+
+        /* 숨겨진 파일 입력 */
+        #fileInput { display: none; }
     </style>
 </head>
 <body>
 
-    <h1>🎲 코코포리아 크롭 도구</h1>
-    <p class="subtitle">TRPG 세션용 스탠딩 & 아이콘을 손쉽게 자르고 다운로드하세요.</p>
-
     <div class="container">
-        <!-- 드래그 앤 드롭 영역 -->
-        <div class="drop-zone" id="dropZone">
-            <p>📷 이미지를 여기에 드래그하거나 클릭하여 업로드하세요</p>
-            <input type="file" id="fileInput" accept="image/*">
-        </div>
-
-        <!-- 크롭 영역 -->
-        <div class="cropper-wrapper" id="cropperWrapper">
-            <img id="image" src="" alt="업로드된 이미지">
-        </div>
-
-        <!-- 조작 버튼 영역 -->
-        <div class="controls" id="controls">
-            <div class="preset-group">
-                <span>비율:</span>
-                <button class="btn" onclick="setAspectRatio(3/4)">스탠딩 (3:4)</button>
-                <button class="btn" onclick="setAspectRatio(1/1)">토큰 (1:1)</button>
-                <button class="btn" onclick="setAspectRatio(NaN)">자유</button>
+        <!-- 좌측 제어판 -->
+        <div class="sidebar">
+            <div class="title">
+                <span>⚔️</span> CCFOLIA CROPPER
             </div>
-            
-            <!-- ✨ 새로 추가된 자동 가운데 정렬 버튼 -->
-            <button class="btn btn-accent" onclick="centerCropBox()">🎯 가운데 정렬</button>
-            
-            <button class="btn btn-primary" onclick="cropImage()">✂️ 잘라내기</button>
+
+            <div class="drop-zone" id="dropZone">
+                <div class="icon">📂</div>
+                <p><strong>PNG 이미지 선택 / 드롭</strong><br>단일: 미리보기 | 다중: 일괄 다운로드</p>
+            </div>
+            <input type="file" id="fileInput" accept="image/png" multiple>
+
+            <div class="control-group">
+                <label class="control-label">비율 선택</label>
+                <div class="ratio-options">
+                    <button class="btn-radio" data-ratio="3:4">3 : 4</button>
+                    <button class="btn-radio" data-ratio="1:1">1 : 1</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">자르기 범위 (머리 기준)</label>
+                <div class="slider-container">
+                    <input type="range" id="cropRange" min="10" max="100" value="60">
+                    <span class="slider-value" id="rangeVal">60%</span>
+                </div>
+            </div>
+
+            <!-- 상반신 중앙 정렬 버튼 -->
+            <button class="btn-secondary" id="centerHBtn" disabled>🎯 상반신 중앙 정렬</button>
+
+            <button class="btn-action" id="downloadBtn" disabled>크롭 이미지 다운로드</button>
         </div>
 
-        <!-- 결과 출력 영역 -->
-        <div class="result-container" id="resultContainer">
-            <h3>미리보기</h3>
-            <div class="preview-box">
-                <img id="resultImage" src="" alt="결과 이미지">
+        <!-- 우측 시각화 영역 -->
+        <div class="preview-area" id="previewArea">
+            <div class="viewport" id="viewport">
+                <div class="stage" id="stage" style="display: none;">
+                    <canvas id="sourceCanvas"></canvas>
+                    <div class="crop-box" id="cropBox"></div>
+                </div>
             </div>
-            <a id="downloadBtn" class="btn btn-primary" download="ccfolia_cropped.png">📥 이미지 다운로드</a>
+
+            <!-- 줌 정보 조작바 -->
+            <div class="zoom-controls">
+                <span>줌: <strong id="zoomVal">100%</strong></span>
+                <button class="btn-reset-zoom" id="resetZoomBtn">줌/위치 리셋</button>
+            </div>
         </div>
     </div>
 
-    <!-- Cropper.js JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script>
+        // LocalStorage 키 정의
+        const STORAGE_KEY_RATIO = 'ccfolia_cropper_ratio';
+        const STORAGE_KEY_PERCENT = 'ccfolia_cropper_percent';
+
+        // DOM 요소
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
-        const image = document.getElementById('image');
-        const cropperWrapper = document.getElementById('cropperWrapper');
-        const controls = document.getElementById('controls');
-        const resultContainer = document.getElementById('resultContainer');
-        const resultImage = document.getElementById('resultImage');
+        const cropRange = document.getElementById('cropRange');
+        const rangeVal = document.getElementById('rangeVal');
         const downloadBtn = document.getElementById('downloadBtn');
+        const centerHBtn = document.getElementById('centerHBtn');
+        const ratioBtns = document.querySelectorAll('.btn-radio');
+        const previewArea = document.getElementById('previewArea');
+        const viewport = document.getElementById('viewport');
+        const stage = document.getElementById('stage');
+        const sourceCanvas = document.getElementById('sourceCanvas');
+        const cropBox = document.getElementById('cropBox');
+        const zoomVal = document.getElementById('zoomVal');
+        const resetZoomBtn = document.getElementById('resetZoomBtn');
+        const ctx = sourceCanvas.getContext('2d', { willReadFrequently: true });
 
-        let cropper = null;
+        // 상태 변수
+        let currentImage = null;
+        let currentFileName = '';
+        let targetRatio = [3, 4];
+        let bounds = { top: 0, bottom: 0, left: 0, right: 0, headCenterX: 0 };
+        let displayScale = 1; 
 
-        // 드래그 앤 드롭 이벤트
-        dropZone.addEventListener('click', () => fileInput.click());
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
+        // 크롭 박스 이동 변수
+        let boxOffsetX = 0;
+        let isBoxDragging = false;
+        let boxStartX = 0;
+
+        // 줌 & 패닝 변수
+        let zoomLevel = 1;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let panStartX = 0;
+        let panStartY = 0;
+
+        // --- LocalStorage 초기화 및 불러오기 ---
+        function initSettings() {
+            const savedRatio = localStorage.getItem(STORAGE_KEY_RATIO) || '3:4';
+            const savedPercent = localStorage.getItem(STORAGE_KEY_PERCENT) || '60';
+
+            // 비율 적용
+            ratioBtns.forEach(btn => {
+                if (btn.dataset.ratio === savedRatio) {
+                    btn.classList.add('active');
+                    const [w, h] = savedRatio.split(':').map(Number);
+                    targetRatio = [w, h];
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // 슬라이더 적용
+            cropRange.value = savedPercent;
+            rangeVal.textContent = `${savedPercent}%`;
+        }
+
+        initSettings();
+
+        // --- 이벤트 리스너 ---
+
+        // 비율 선택 및 저장
+        ratioBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                ratioBtns.forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                const ratioStr = e.target.dataset.ratio;
+                const [w, h] = ratioStr.split(':').map(Number);
+                targetRatio = [w, h];
+                
+                localStorage.setItem(STORAGE_KEY_RATIO, ratioStr);
+                resetBoxPosition();
+                updateCropView();
+            });
         });
+
+        // 슬라이더 조절 및 저장
+        cropRange.addEventListener('input', (e) => {
+            const val = e.target.value;
+            rangeVal.textContent = `${val}%`;
+            localStorage.setItem(STORAGE_KEY_PERCENT, val);
+            updateCropView();
+        });
+
+        // 상반신 중앙 정렬 버튼 클릭 이벤트
+        centerHBtn.addEventListener('click', () => {
+            resetBoxPosition();
+            updateCropView();
+        });
+
+        // 드래그 앤 드롭
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.classList.remove('dragover');
-            if (e.dataTransfer.files.length) {
-                handleFile(e.dataTransfer.files[0]);
+            handleFiles(e.dataTransfer.files);
+        });
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        downloadBtn.addEventListener('click', downloadSingleCrop);
+
+        // --- 줌 & 패닝 이벤트 처리 ---
+
+        // 마우스 휠 (줌 확장/축소)
+        previewArea.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            const newZoom = Math.max(0.2, Math.min(5.0, zoomLevel * zoomFactor));
+            
+            zoomLevel = newZoom;
+            updateViewportTransform();
+        }, { passive: false });
+
+        // 패닝(이동) 및 크롭박스 드래그 분기 처리
+        previewArea.addEventListener('mousedown', (e) => {
+            if (e.target === cropBox) {
+                isBoxDragging = true;
+                boxStartX = e.clientX;
+                e.stopPropagation();
+            } else {
+                isPanning = true;
+                panStartX = e.clientX - panX;
+                panStartY = e.clientY - panY;
             }
         });
 
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length) {
-                handleFile(e.target.files[0]);
+        window.addEventListener('mousemove', (e) => {
+            if (isBoxDragging) {
+                const deltaX = (e.clientX - boxStartX) / (displayScale * zoomLevel);
+                boxStartX = e.clientX;
+                boxOffsetX += deltaX;
+                clampBoxOffset();
+                applyBoxStyles();
+            } else if (isPanning) {
+                panX = e.clientX - panStartX;
+                panY = e.clientY - panStartY;
+                updateViewportTransform();
             }
         });
 
-        function handleFile(file) {
-            if (!file.type.startsWith('image/')) return;
+        window.addEventListener('mouseup', () => {
+            isBoxDragging = false;
+            isPanning = false;
+        });
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                image.src = e.target.result;
-                cropperWrapper.style.display = 'block';
-                controls.style.display = 'flex';
-                resultContainer.style.display = 'none';
+        // 줌/위치 리셋
+        resetZoomBtn.addEventListener('click', resetViewport);
 
-                if (cropper) {
-                    cropper.destroy();
-                }
+        function updateViewportTransform() {
+            viewport.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
+            zoomVal.textContent = `${Math.round(zoomLevel * 100)}%`;
+        }
 
-                cropper = new Cropper(image, {
-                    aspectRatio: 3 / 4, // 기본 스탠딩 비율
-                    viewMode: 1,
-                    autoCropArea: 0.8,
-                    ready() {
-                        // 이미지 로드 완료 시 자동으로 가운데 정렬 실행
-                        centerCropBox();
-                    }
+        function resetViewport() {
+            zoomLevel = 1;
+            panX = 0;
+            panY = 0;
+            updateViewportTransform();
+        }
+
+        // --- 메인 크롭 로직 ---
+
+        function handleFiles(files) {
+            const pngFiles = Array.from(files).filter(f => f.type === 'image/png');
+            if (pngFiles.length === 0) {
+                alert('PNG 이미지 파일만 올려주세요.');
+                return;
+            }
+
+            if (pngFiles.length === 1) {
+                loadSingleImage(pngFiles[0]);
+            } else {
+                processBatch(pngFiles);
+            }
+        }
+
+        function loadSingleImage(file) {
+            currentFileName = file.name;
+            const img = new Image();
+            img.onload = () => {
+                currentImage = img;
+                
+                sourceCanvas.width = img.width;
+                sourceCanvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+
+                bounds = getAlphaBounds(ctx, img.width, img.height);
+                
+                stage.style.display = 'inline-block';
+                downloadBtn.disabled = false;
+                centerHBtn.disabled = false;
+
+                resetBoxPosition();
+                resetViewport();
+
+                requestAnimationFrame(() => {
+                    updateDisplayScale();
+                    updateCropView();
                 });
             };
-            reader.readAsDataURL(file);
+            img.src = URL.createObjectURL(file);
         }
 
-        function setAspectRatio(ratio) {
-            if (cropper) {
-                cropper.setAspectRatio(ratio);
-                centerCropBox(); // 비율 바꿀 때도 자동으로 가운데 정렬
+        /* 🔥 상반신/얼굴 가로 중심 정밀 감지 로직 */
+        function getAlphaBounds(context, width, height) {
+            const imgData = context.getImageData(0, 0, width, height).data;
+            let top = height, bottom = 0, left = width, right = 0;
+            let hasAlpha = false;
+
+            // 1차 패스: 전체 캐릭터 세로/가로 경계 감지
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const alpha = imgData[(y * width + x) * 4 + 3];
+                    if (alpha > 0) {
+                        if (y < top) top = y;
+                        if (y > bottom) bottom = y;
+                        if (x < left) left = x;
+                        if (x > right) right = x;
+                        hasAlpha = true;
+                    }
+                }
             }
+
+            if (!hasAlpha) {
+                return { top: 0, bottom: height, left: 0, right: width, headCenterX: width / 2 };
+            }
+
+            // 2차 패스: 상반신(머리부터 캐릭터 전체 높이의 상위 35% 구간)의 좌우 경계 구하기
+            const charHeight = bottom - top;
+            const upperLimitY = top + Math.max(20, Math.round(charHeight * 0.35)); 
+
+            let upperLeft = width, upperRight = 0;
+            let upperHasAlpha = false;
+
+            for (let y = top; y <= upperLimitY && y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const alpha = imgData[(y * width + x) * 4 + 3];
+                    if (alpha > 0) {
+                        if (x < upperLeft) upperLeft = x;
+                        if (x > upperRight) upperRight = x;
+                        upperHasAlpha = true;
+                    }
+                }
+            }
+
+            // 상반신 알파 데이터가 존재하면 상반신 가로 중심, 없으면 전체 가로 중심 사용
+            const headCenterX = upperHasAlpha ? (upperLeft + upperRight) / 2 : (left + right) / 2;
+
+            return { top, bottom, left, right, headCenterX };
         }
 
-        // ✨ 자르기 상자(Crop Box)를 화면 가운데로 위치시키는 함수
-        function centerCropBox() {
-            if (!cropper) return;
+        function resetBoxPosition() {
+            boxOffsetX = 0;
+        }
+
+        function clampBoxOffset() {
+            if (!currentImage) return;
+            const percentage = parseInt(cropRange.value) / 100;
+            const characterHeight = bounds.bottom - bounds.top;
+            const cropH = characterHeight * percentage;
+            const cropW = cropH * (targetRatio[0] / targetRatio[1]);
             
-            const containerData = cropper.getContainerData();
-            const cropBoxData = cropper.getCropBoxData();
+            // 상반신/얼굴 가로 중심(headCenterX) 적용
+            const defaultLeft = bounds.headCenterX - (cropW / 2);
 
-            const left = (containerData.width - cropBoxData.width) / 2;
-            const top = (containerData.height - cropBoxData.height) / 2;
+            const minOffsetX = -defaultLeft;
+            const maxOffsetX = currentImage.width - cropW - defaultLeft;
 
-            cropper.setCropBoxData({
-                left: left,
-                top: top
-            });
+            boxOffsetX = Math.max(minOffsetX, Math.min(maxOffsetX, boxOffsetX));
         }
 
-        function cropImage() {
-            if (!cropper) return;
+        function updateDisplayScale() {
+            if (!sourceCanvas.offsetWidth) return;
+            displayScale = sourceCanvas.offsetWidth / sourceCanvas.width;
+        }
 
-            const canvas = cropper.getCroppedCanvas({
-                imageSmoothingEnabled: true,
-                imageSmoothingQuality: 'high',
-            });
+        function updateCropView() {
+            if (!currentImage) return;
+            updateDisplayScale();
+            clampBoxOffset();
+            applyBoxStyles();
+        }
 
-            resultImage.src = canvas.toDataURL('image/png');
-            downloadBtn.href = canvas.toDataURL('image/png');
-            resultContainer.style.display = 'flex';
+        function applyBoxStyles() {
+            const percentage = parseInt(cropRange.value) / 100;
+            const characterHeight = bounds.bottom - bounds.top;
+            const cropH = characterHeight * percentage;
+            const cropW = cropH * (targetRatio[0] / targetRatio[1]);
+            
+            // 상반신/얼굴 가로 중심(headCenterX) 적용
+            const cropX = (bounds.headCenterX - (cropW / 2)) + boxOffsetX;
+            const cropY = bounds.top;
+
+            cropBox.style.width = `${cropW * displayScale}px`;
+            cropBox.style.height = `${cropH * displayScale}px`;
+            cropBox.style.left = `${cropX * displayScale}px`;
+            cropBox.style.top = `${cropY * displayScale}px`;
+
+            cropBox.dataset.cropX = cropX;
+            cropBox.dataset.cropY = cropY;
+            cropBox.dataset.cropW = cropW;
+            cropBox.dataset.cropH = cropH;
+        }
+
+        window.addEventListener('resize', () => {
+            if (currentImage) updateCropView();
+        });
+
+        function downloadSingleCrop() {
+            const x = parseFloat(cropBox.dataset.cropX);
+            const y = parseFloat(cropBox.dataset.cropY);
+            const w = parseFloat(cropBox.dataset.cropW);
+            const h = parseFloat(cropBox.dataset.cropH);
+
+            const croppedCanvas = createCroppedCanvas(currentImage, x, y, w, h);
+            saveCanvas(croppedCanvas, currentFileName.replace(/\.png$/i, '_crop.png'));
+        }
+
+        async function processBatch(files) {
+            downloadBtn.disabled = true;
+            centerHBtn.disabled = true;
+            downloadBtn.textContent = '일괄 처리 중...';
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                await new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = img.width;
+                        tempCanvas.height = img.height;
+                        const tempCtx = tempCanvas.getContext('2d');
+                        tempCtx.drawImage(img, 0, 0);
+
+                        const b = getAlphaBounds(tempCtx, img.width, img.height);
+                        
+                        const percentage = parseInt(cropRange.value) / 100;
+                        const charH = b.bottom - b.top;
+                        const cropH = charH * percentage;
+                        const cropW = cropH * (targetRatio[0] / targetRatio[1]);
+                        
+                        // 상반신 가로 중심 적용
+                        const cropX = b.headCenterX - (cropW / 2);
+                        const cropY = b.top;
+
+                        const resultCanvas = createCroppedCanvas(img, cropX, cropY, cropW, cropH);
+                        saveCanvas(resultCanvas, file.name.replace(/\.png$/i, '_crop.png'));
+                        
+                        setTimeout(resolve, 200);
+                    };
+                    img.src = URL.createObjectURL(file);
+                });
+            }
+
+            downloadBtn.disabled = false;
+            centerHBtn.disabled = false;
+            downloadBtn.textContent = '크롭 이미지 다운로드';
+            alert(`총 ${files.length}개의 이미지 크롭 다운로드가 완료되었습니다.`);
+        }
+
+        function createCroppedCanvas(img, x, y, w, h) {
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(w);
+            canvas.height = Math.round(h);
+            const context = canvas.getContext('2d');
+
+            context.drawImage(
+                img, 
+                Math.round(x), Math.round(y), Math.round(w), Math.round(h),
+                0, 0, Math.round(w), Math.round(h)
+            );
+            return canvas;
+        }
+
+        function saveCanvas(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
         }
     </script>
 </body>
