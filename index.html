@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CCFOLIA Standing Cropper v1.2</title>
+    <title>CCFOLIA Standing Cropper v1.5</title>
     <style>
         :root {
             --bg-color: #121214;
@@ -47,9 +47,10 @@
             padding: 24px;
             display: flex;
             flex-direction: column;
-            gap: 24px;
+            gap: 20px;
             z-index: 10;
             box-shadow: 4px 0 12px rgba(0,0,0,0.3);
+            overflow-y: auto;
         }
 
         .title {
@@ -66,7 +67,7 @@
         .drop-zone {
             border: 2px dashed var(--border-color);
             border-radius: 8px;
-            padding: 24px 16px;
+            padding: 20px 16px;
             text-align: center;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -101,6 +102,9 @@
             font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .ratio-options {
@@ -144,6 +148,48 @@
             font-weight: 600;
             width: 45px;
             text-align: right;
+        }
+
+        /* 외곽선 전용 스타일 */
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            background: none;
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: var(--text-color);
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            accent-color: var(--primary-color);
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
         }
 
         /* 보조 버튼 스타일 */
@@ -219,7 +265,7 @@
             cursor: grabbing;
         }
 
-        /* 뷰포트 내부 캔버스 컨테이너 (Pan & Zoom 전용) */
+        /* 뷰포트 내부 캔버스 컨테이너 */
         .viewport {
             position: absolute;
             transform-origin: center center;
@@ -239,6 +285,7 @@
             width: auto;
             height: auto;
             object-fit: contain;
+            transition: filter 0.15s ease;
         }
 
         /* 크롭 영역 오버레이 */
@@ -248,6 +295,7 @@
             box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
             cursor: ew-resize;
             box-sizing: border-box;
+            z-index: 5;
         }
 
         .crop-box::after {
@@ -333,6 +381,26 @@
                 </div>
             </div>
 
+            <!-- 🔥 흐린 외곽선(글로우/후광) 옵션 -->
+            <div class="control-group">
+                <label class="control-label">
+                    <span>✨ 흐린 외곽선 레이아웃</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="shadowEnable"> 외곽선 효과 적용
+                </label>
+                
+                <div class="color-picker-wrapper" style="margin-top: 4px;">
+                    <input type="color" id="shadowColor" value="#ffffff">
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">외곽선 색상</span>
+                </div>
+
+                <div class="slider-container">
+                    <input type="range" id="shadowBlur" min="2" max="30" value="12">
+                    <span class="slider-value" id="blurVal">12px</span>
+                </div>
+            </div>
+
             <!-- 상반신 중앙 정렬 버튼 -->
             <button class="btn-secondary" id="centerHBtn" disabled>🎯 상반신 중앙 정렬</button>
 
@@ -378,6 +446,12 @@
         const resetZoomBtn = document.getElementById('resetZoomBtn');
         const ctx = sourceCanvas.getContext('2d', { willReadFrequently: true });
 
+        // 외곽선 컨트롤 DOM 요소
+        const shadowEnable = document.getElementById('shadowEnable');
+        const shadowColor = document.getElementById('shadowColor');
+        const shadowBlur = document.getElementById('shadowBlur');
+        const blurVal = document.getElementById('blurVal');
+
         // 상태 변수
         let currentImage = null;
         let currentFileName = '';
@@ -403,7 +477,6 @@
             const savedRatio = localStorage.getItem(STORAGE_KEY_RATIO) || '3:4';
             const savedPercent = localStorage.getItem(STORAGE_KEY_PERCENT) || '60';
 
-            // 비율 적용
             ratioBtns.forEach(btn => {
                 if (btn.dataset.ratio === savedRatio) {
                     btn.classList.add('active');
@@ -414,14 +487,31 @@
                 }
             });
 
-            // 슬라이더 적용
             cropRange.value = savedPercent;
             rangeVal.textContent = `${savedPercent}%`;
         }
 
         initSettings();
 
-        // --- 이벤트 리스너 ---
+        // 🔥 실시간 미리보기 필터 업데이트 함수
+        function updateCanvasFilter() {
+            if (shadowEnable.checked) {
+                const blur = shadowBlur.value;
+                const color = shadowColor.value;
+                // 실시간 미리보기용 CSS drop-shadow 필터 연동
+                sourceCanvas.style.filter = `drop-shadow(0 0 ${blur}px ${color}) drop-shadow(0 0 ${Math.max(1, blur/2)}px ${color})`;
+            } else {
+                sourceCanvas.style.filter = 'none';
+            }
+        }
+
+        // 외곽선 컨트롤 변경 시 즉시 미리보기 반영
+        shadowEnable.addEventListener('change', updateCanvasFilter);
+        shadowColor.addEventListener('input', updateCanvasFilter);
+        shadowBlur.addEventListener('input', (e) => {
+            blurVal.textContent = `${e.target.value}px`;
+            updateCanvasFilter();
+        });
 
         // 비율 선택 및 저장
         ratioBtns.forEach(btn => {
@@ -447,7 +537,7 @@
             updateCropView();
         });
 
-        // 상반신 중앙 정렬 버튼 클릭 이벤트
+        // 상반신 중앙 정렬 버튼
         centerHBtn.addEventListener('click', () => {
             resetBoxPosition();
             updateCropView();
@@ -466,9 +556,7 @@
 
         downloadBtn.addEventListener('click', downloadSingleCrop);
 
-        // --- 줌 & 패닝 이벤트 처리 ---
-
-        // 마우스 휠 (줌 확장/축소)
+        // --- 줌 & 패닝 이벤트 ---
         previewArea.addEventListener('wheel', (e) => {
             e.preventDefault();
             const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
@@ -478,7 +566,6 @@
             updateViewportTransform();
         }, { passive: false });
 
-        // 패닝(이동) 및 크롭박스 드래그 분기 처리
         previewArea.addEventListener('mousedown', (e) => {
             if (e.target === cropBox) {
                 isBoxDragging = true;
@@ -510,7 +597,6 @@
             isPanning = false;
         });
 
-        // 줌/위치 리셋
         resetZoomBtn.addEventListener('click', resetViewport);
 
         function updateViewportTransform() {
@@ -525,8 +611,7 @@
             updateViewportTransform();
         }
 
-        // --- 메인 크롭 로직 ---
-
+        // --- 파일 로드 & 처리 ---
         function handleFiles(files) {
             const pngFiles = Array.from(files).filter(f => f.type === 'image/png');
             if (pngFiles.length === 0) {
@@ -559,6 +644,7 @@
 
                 resetBoxPosition();
                 resetViewport();
+                updateCanvasFilter(); // 필터 업데이트
 
                 requestAnimationFrame(() => {
                     updateDisplayScale();
@@ -568,13 +654,11 @@
             img.src = URL.createObjectURL(file);
         }
 
-        /* 🔥 상반신/얼굴 가로 중심 정밀 감지 로직 */
         function getAlphaBounds(context, width, height) {
             const imgData = context.getImageData(0, 0, width, height).data;
             let top = height, bottom = 0, left = width, right = 0;
             let hasAlpha = false;
 
-            // 1차 패스: 전체 캐릭터 세로/가로 경계 감지
             for (let y = 0; y < height; y++) {
                 for (let x = 0; x < width; x++) {
                     const alpha = imgData[(y * width + x) * 4 + 3];
@@ -592,7 +676,6 @@
                 return { top: 0, bottom: height, left: 0, right: width, headCenterX: width / 2 };
             }
 
-            // 2차 패스: 상반신(머리부터 캐릭터 전체 높이의 상위 35% 구간)의 좌우 경계 구하기
             const charHeight = bottom - top;
             const upperLimitY = top + Math.max(20, Math.round(charHeight * 0.35)); 
 
@@ -610,7 +693,6 @@
                 }
             }
 
-            // 상반신 알파 데이터가 존재하면 상반신 가로 중심, 없으면 전체 가로 중심 사용
             const headCenterX = upperHasAlpha ? (upperLeft + upperRight) / 2 : (left + right) / 2;
 
             return { top, bottom, left, right, headCenterX };
@@ -627,7 +709,6 @@
             const cropH = characterHeight * percentage;
             const cropW = cropH * (targetRatio[0] / targetRatio[1]);
             
-            // 상반신/얼굴 가로 중심(headCenterX) 적용
             const defaultLeft = bounds.headCenterX - (cropW / 2);
 
             const minOffsetX = -defaultLeft;
@@ -654,7 +735,6 @@
             const cropH = characterHeight * percentage;
             const cropW = cropH * (targetRatio[0] / targetRatio[1]);
             
-            // 상반신/얼굴 가로 중심(headCenterX) 적용
             const cropX = (bounds.headCenterX - (cropW / 2)) + boxOffsetX;
             const cropY = bounds.top;
 
@@ -706,7 +786,6 @@
                         const cropH = charH * percentage;
                         const cropW = cropH * (targetRatio[0] / targetRatio[1]);
                         
-                        // 상반신 가로 중심 적용
                         const cropX = b.headCenterX - (cropW / 2);
                         const cropY = b.top;
 
@@ -725,17 +804,32 @@
             alert(`총 ${files.length}개의 이미지 크롭 다운로드가 완료되었습니다.`);
         }
 
+        /* 🔥 다운로드용 Canvas Filter 기반 정밀 외곽선 생성 함수 */
         function createCroppedCanvas(img, x, y, w, h) {
             const canvas = document.createElement('canvas');
-            canvas.width = Math.round(w);
-            canvas.height = Math.round(h);
+            const roundedW = Math.round(w);
+            const roundedH = Math.round(h);
+            
+            canvas.width = roundedW;
+            canvas.height = roundedH;
             const context = canvas.getContext('2d');
+
+            if (shadowEnable.checked) {
+                const blur = shadowBlur.value;
+                const col = shadowColor.value;
+
+                // Canvas Filter API를 이용해 외곽선/글로우 적용
+                context.filter = `drop-shadow(0px 0px ${blur}px ${col}) drop-shadow(0px 0px ${Math.max(1, blur / 2)}px ${col})`;
+            } else {
+                context.filter = 'none';
+            }
 
             context.drawImage(
                 img, 
-                Math.round(x), Math.round(y), Math.round(w), Math.round(h),
-                0, 0, Math.round(w), Math.round(h)
+                Math.round(x), Math.round(y), roundedW, roundedH,
+                0, 0, roundedW, roundedH
             );
+
             return canvas;
         }
 
